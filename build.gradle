@@ -1,0 +1,15 @@
+plugins {
+    id 'org.spongepowered.plugin' version '0.8.1'
+}
+
+group = 'io.github.icohedron.pictionary'
+version = '1.0.0'
+
+description = 'Set an answer and the plugin will announce the first player who typed the answer in chat'
+
+sourceCompatibility = 1.8
+targetCompatibility = 1.8
+
+dependencies {
+    compile 'org.spongepowered:spongeapi:5.1.0'
+}
