@@ -24,7 +24,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.regex.Pattern;
 
-@Plugin(id = "pictionary", name = "Pictionary", version = "1.0.0",
+@Plugin(id = "pictionary", name = "Pictionary", version = "1.0.1",
         description = "Set an answer and the plugin will announce the first player who typed the answer in chat")
 public class Pictionary {
 
@@ -150,7 +150,7 @@ public class Pictionary {
         validAnswers[2] = answer.replace("-"," ");
 
         for (String ans : validAnswers) {
-            if (Pattern.compile("^<.*>\\s*" + ans + "\\s*$", Pattern.CASE_INSENSITIVE).matcher(message).find()) {
+            if (Pattern.compile("^<.*>\\s*" + Pattern.quote(ans) + "\\s*$", Pattern.CASE_INSENSITIVE).matcher(message).find()) {
                 prevAnswer = answer;
                 Task.builder().execute(() -> MessageChannel.TO_ALL.send(Text.of(prefix, TextColors.GREEN, player.getName(), TextColors.YELLOW, " has gotten the correct answer! The answer was '", TextColors.WHITE, prevAnswer, TextColors.YELLOW, "'"))).delayTicks(1).submit(this); // Delay by a tick to let the player's message show up in chat before the player is announced as a winner.
                 // event.setMessageCancelled(true);
