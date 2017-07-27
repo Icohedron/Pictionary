@@ -21,7 +21,7 @@ pictionary.command.status
 # Set an artist (gives them flight)
 # This command also does not treat selectors (particularly @p) the way you expect it to.
 # Use '/execute @p[whateverSelectorArguments] ~ ~ ~ pictionary set artist @p[r=0]' as a workaround.
-# Artist is taken away when the artist disconnects, the server crashes, '/pictionary clear' is ran, or if the answer was found
+# Artist is taken away when the artist disconnects, the server crashes/restarts, '/pictionary clear' is ran, or if the answer was found
 /pictionary set artist <player selector>
 
 # Set the answer by string
