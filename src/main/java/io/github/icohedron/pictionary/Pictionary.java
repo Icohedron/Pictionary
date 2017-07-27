@@ -20,13 +20,22 @@ import org.spongepowered.api.text.channel.MessageChannel;
 import org.spongepowered.api.text.format.TextColors;
 import org.spongepowered.api.text.selector.Selector;
 
+import java.io.IOException;
+import java.net.MalformedURLException;
+import java.net.URL;
 import java.util.Optional;
+import java.util.Scanner;
 import java.util.Set;
 import java.util.regex.Pattern;
 
 @Plugin(id = "pictionary", name = "Pictionary", version = "1.0.1",
         description = "Set an answer and the plugin will announce the first player who typed the answer in chat")
 public class Pictionary {
+
+    /* TODO:
+     * Add the ability to set an artist and give them flight
+     * /pictionary clear, and a player guessing the correct answer will remove the artist and their flight
+     */
 
     @Inject
     private Logger logger;
@@ -135,6 +144,8 @@ public class Pictionary {
         Sponge.getCommandManager().register(this, pictionary, "pictionary");
 
         logger.info("Plugin was successfully initialized");
+
+
     }
 
     @Listener
