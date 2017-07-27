@@ -13,6 +13,7 @@ import org.spongepowered.api.event.Listener;
 import org.spongepowered.api.event.filter.cause.First;
 import org.spongepowered.api.event.game.state.GameInitializationEvent;
 import org.spongepowered.api.event.message.MessageEvent;
+import org.spongepowered.api.event.network.ClientConnectionEvent;
 import org.spongepowered.api.plugin.Plugin;
 import org.spongepowered.api.scheduler.Task;
 import org.spongepowered.api.text.Text;
@@ -20,22 +21,13 @@ import org.spongepowered.api.text.channel.MessageChannel;
 import org.spongepowered.api.text.format.TextColors;
 import org.spongepowered.api.text.selector.Selector;
 
-import java.io.IOException;
-import java.net.MalformedURLException;
-import java.net.URL;
 import java.util.Optional;
-import java.util.Scanner;
 import java.util.Set;
 import java.util.regex.Pattern;
 
-@Plugin(id = "pictionary", name = "Pictionary", version = "1.0.1",
+@Plugin(id = "pictionary", name = "Pictionary", version = "2.0.0",
         description = "Set an answer and the plugin will announce the first player who typed the answer in chat")
 public class Pictionary {
-
-    /* TODO:
-     * Add the ability to set an artist and give them flight
-     * /pictionary clear, and a player guessing the correct answer will remove the artist and their flight
-     */
 
     @Inject
     private Logger logger;
@@ -44,11 +36,13 @@ public class Pictionary {
 
     private String answer;
     private String prevAnswer;
+    private Player artist;
 
     @Listener
     public void onInitializationEvent(GameInitializationEvent event) {
         answer = null;
         prevAnswer = null;
+        artist = null;
 
         CommandSpec setString = CommandSpec.builder()
                 .description(Text.of("Set an answer via string"))
@@ -66,7 +60,7 @@ public class Pictionary {
                 })
                 .build();
 
-        /* Known bugs with 'set entity' command (Minecraft 1.10.2, Sponge API 5.1.0):
+        /* Known bugs with 'set entity' and 'set artist' command (Minecraft 1.10.2, Sponge API 5.1.0):
          * Selector arguments 'c=', 'tag=', 'score_*=', 'score_*_min=1' do not work. There may be more. This is an issue with Sponge, not the plugin.
          * A workaround is to execute off of the entity you wish to set as the answer and make it select itself as the answer. (e.g. 'execute @r ~ ~ ~ pictionary set entity @e[r=0]')
          */
@@ -105,10 +99,46 @@ public class Pictionary {
                 })
                 .build();
 
+        CommandSpec setArtist = CommandSpec.builder()
+                .description(Text.of("Set the artist"))
+                .permission("pictionary.command.set.artist")
+                .arguments(GenericArguments.onlyOne(GenericArguments.string(Text.of("artist"))))
+                .executor((src, args) -> {
+                    Optional<String> arg = args.getOne("artist");
+                    if (arg.isPresent()) {
+                        Set<Entity> entities = Selector.parse(arg.get()).resolve(src);
+
+                        if (entities.size() == 0) {
+                            src.sendMessage(Text.of(prefix, TextColors.RED, "No entity found by the selector specified"));
+                            return CommandResult.empty();
+                        }
+
+                        if (entities.size() > 1) {
+                            src.sendMessage(Text.of(prefix, TextColors.RED, "The selector specified found more than one entity"));
+                            return CommandResult.empty();
+                        }
+
+                        Entity entity = entities.iterator().next();
+                        if (!(entity instanceof Player)) {
+                            src.sendMessage(Text.of(prefix, TextColors.RED, "The selector found an entity rather than a player"));
+                            return CommandResult.empty();
+                        }
+
+                        Player player = (Player) entity;
+                        setArtist(player);
+                        src.sendMessage(Text.of(prefix, TextColors.YELLOW, "The artist was set to '", TextColors.WHITE, artist.getName(), TextColors.YELLOW, "'"));
+                        return CommandResult.success();
+                    }
+                    src.sendMessage(Text.of(TextColors.RED, "An error has occurred"));
+                    return CommandResult.empty();
+                })
+                .build();
+
         CommandSpec set = CommandSpec.builder()
-                .description(Text.of("Set an answer"))
+                .description(Text.of("Set an answer or artist"))
                 .child(setString, "string")
                 .child(setEntity, "entity")
+                .child(setArtist, "artist")
                 .build();
 
         CommandSpec clear = CommandSpec.builder()
@@ -116,6 +146,7 @@ public class Pictionary {
                 .permission("pictionary.command.clear")
                 .executor((src, args) -> {
                     answer = null;
+                    setArtist(null);
                     src.sendMessage(Text.of(prefix, TextColors.YELLOW, "The current answer was cleared"));
                     return CommandResult.success();
                 })
@@ -144,8 +175,6 @@ public class Pictionary {
         Sponge.getCommandManager().register(this, pictionary, "pictionary");
 
         logger.info("Plugin was successfully initialized");
-
-
     }
 
     @Listener
@@ -164,10 +193,34 @@ public class Pictionary {
             if (Pattern.compile("^<.*>\\s*" + Pattern.quote(ans) + "\\s*$", Pattern.CASE_INSENSITIVE).matcher(message).find()) {
                 prevAnswer = answer;
                 Task.builder().execute(() -> MessageChannel.TO_ALL.send(Text.of(prefix, TextColors.GREEN, player.getName(), TextColors.YELLOW, " has gotten the correct answer! The answer was '", TextColors.WHITE, prevAnswer, TextColors.YELLOW, "'"))).delayTicks(1).submit(this); // Delay by a tick to let the player's message show up in chat before the player is announced as a winner.
-                // event.setMessageCancelled(true);
                 answer = null;
+                setArtist(null);
                 return;
             }
+        }
+    }
+
+    @Listener
+    public void onDisconnectEvent(ClientConnectionEvent.Disconnect event, @First Player player) {
+        if (artist == null) {
+            return;
+        }
+
+        if (player.getUniqueId().equals(artist.getUniqueId())) {
+            setArtist(null);
+        }
+    }
+
+    private void setArtist(Player player) {
+        if (artist != null) {
+            artist.offer(Keys.CAN_FLY, false);
+            artist.offer(Keys.IS_FLYING, false);
+            artist = null;
+        }
+
+        if (player != null) {
+            player.offer(Keys.CAN_FLY, true);
+            artist = player;
         }
     }
 }
