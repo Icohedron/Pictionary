@@ -25,7 +25,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.regex.Pattern;
 
-@Plugin(id = "pictionary", name = "Pictionary", version = "2.0.0",
+@Plugin(id = "pictionary", name = "Pictionary", version = "2.0.1",
         description = "Set an answer and the plugin will announce the first player who typed the answer in chat")
 public class Pictionary {
 
@@ -182,6 +182,13 @@ public class Pictionary {
         if (answer == null) {
             return;
         }
+
+        if (artist != null) {
+            if (player.getUniqueId().equals(artist.getUniqueId())) {
+                return;
+            }
+        }
+
         String message = event.getOriginalMessage().toPlain();
 
         String[] validAnswers = new String[3];
