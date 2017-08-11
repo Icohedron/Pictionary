@@ -1,35 +1,53 @@
 # Pictionary
-Pictionary plugin for the EGO Minecraft event server.  
+Pictionary plugin for the EGO Minecraft Event Server.
+Provides mechanics that make Pictionary possible.
 
 ## Permissions
 ```
-pictionary.command.set.entity
-pictionary.command.set.string
-pictionary.command.set.artist
+pictionary.command.answer.setbystring
+pictionary.command.answer.setbyentity
+pictionary.command.answer.status
+pictionary.command.answer.clear
+
+pictionary.command.artist.set
+pictionary.command.artist.status
+pictionary.command.artist.clear
+
 pictionary.command.clear
-pictionary.command.status
 ```
 
 ## Commands
 ```
 # Set the answer by entity name
-# Known bugs with 'set entity' command (Minecraft 1.10.2, Sponge API 5.1.0):
-# Selector arguments 'c=', 'tag=', 'score_*=', 'score_*_min=' do not work. There may be more. This is an issue with Sponge, not the plugin.
-# A workaround is to execute off of the entity you wish to set as the answer and make it select itself as the answer. (e.g. 'execute @r ~ ~ ~ pictionary set entity @e[r=0]')
-/pictionary set entity <entity selector>
-
-# Set an artist (gives them flight)
-# This command also does not treat selectors (particularly @p) the way you expect it to.
-# Use '/execute @p[whateverSelectorArguments] ~ ~ ~ pictionary set artist @p[r=0]' as a workaround.
-# Artist is taken away when the artist disconnects, the server crashes/restarts, '/pictionary clear' is ran, or if the answer was found
-/pictionary set artist <player selector>
+/pictionary answer setbyentity <entity>
+/pc answer setbyentity <entity>
 
 # Set the answer by string
-/pictionary set string <string>
+/pictionary answer setbystring <string>
+/pc answer setbystring <string>
 
-# Clear the answer manually. The answer is automatically cleared when a winner has been announced
+# Get the status of the answer. Returns a command success if the answer is ready to be set (i.e. there is no answer set, and it's waiting for one to be set)
+/pictionary answer status
+/pc answer status
+
+# Clear the current answer
+/pictionary answer clear
+/pc answer clear
+
+
+# Set the artist
+/pictionary artist set <player>
+/pc artist set <player>
+
+# Get the status of the artist. Returns a command success if the artist is ready to be set (i.e. there is currently no artist, and it's waiting for one to be set)
+/pictionary artist status
+/pc artist status
+
+# Clear the current artist
+/pictioonary artist clear
+/pc artist clear
+
+
+# Clears both the current answer and the artist
 /pictionary clear
-
-# Status of Pictionary (whether the plugin is still waiting for an answer to be found or not). Returns success if it is not waiting for an answer
-/pictionary status
 ```

@@ -19,14 +19,12 @@ import org.spongepowered.api.scheduler.Task;
 import org.spongepowered.api.text.Text;
 import org.spongepowered.api.text.channel.MessageChannel;
 import org.spongepowered.api.text.format.TextColors;
-import org.spongepowered.api.text.selector.Selector;
 
 import java.util.Optional;
-import java.util.Set;
 import java.util.regex.Pattern;
 
-@Plugin(id = "pictionary", name = "Pictionary", version = "2.0.1",
-        description = "Set an answer and the plugin will announce the first player who typed the answer in chat")
+@Plugin(id = "pictionary", name = "Pictionary", version = "3.0.0-S5.1",
+        description = "Provides mechanics that make Pictionary possible", authors = {"Icohedron"})
 public class Pictionary {
 
     @Inject
@@ -44,190 +42,199 @@ public class Pictionary {
         prevAnswer = null;
         artist = null;
 
-        CommandSpec setString = CommandSpec.builder()
+        CommandSpec setAnswerByString = CommandSpec.builder()
                 .description(Text.of("Set an answer via string"))
-                .permission("pictionary.command.set.string")
+                .permission("pictionary.command.answer.setbystring")
                 .arguments(GenericArguments.remainingJoinedStrings(Text.of("string")))
                 .executor((src, args) -> {
-                    Optional<String> arg = args.getOne("string");
-                    if (arg.isPresent()) {
-                        answer = arg.get();
+                    String answer = args.<String>getOne("string").get();
+                    setAnswer(answer);
+                    src.sendMessage(Text.of(prefix, TextColors.YELLOW, "Answer was set to '", TextColors.WHITE, answer, TextColors.YELLOW, "'"));
+                    return CommandResult.success();
+                })
+                .build();
+
+        CommandSpec setAnswerByEntity = CommandSpec.builder()
+                .description(Text.of("Set an answer via an entity name"))
+                .permission("pictionary.command.answer.setbyentity")
+                .arguments(GenericArguments.onlyOne(GenericArguments.entity(Text.of("entity"))))
+                .executor((src, args) -> {
+                    Entity entity = args.<Entity>getOne("entity").get();
+                    Optional<Text> displayName = entity.get(Keys.DISPLAY_NAME);
+                    if (displayName.isPresent()) {
+                        setAnswer(displayName.get().toPlain());
                         src.sendMessage(Text.of(prefix, TextColors.YELLOW, "Answer was set to '", TextColors.WHITE, answer, TextColors.YELLOW, "'"));
                         return CommandResult.success();
                     }
-                    src.sendMessage(Text.of(TextColors.RED, "An error has occurred"));
+
+                    src.sendMessage(Text.of(prefix, TextColors.RED, "Entity has no display name"));
                     return CommandResult.empty();
                 })
                 .build();
 
-        /* Known bugs with 'set entity' and 'set artist' command (Minecraft 1.10.2, Sponge API 5.1.0):
-         * Selector arguments 'c=', 'tag=', 'score_*=', 'score_*_min=1' do not work. There may be more. This is an issue with Sponge, not the plugin.
-         * A workaround is to execute off of the entity you wish to set as the answer and make it select itself as the answer. (e.g. 'execute @r ~ ~ ~ pictionary set entity @e[r=0]')
-         */
-        CommandSpec setEntity = CommandSpec.builder()
-                .description(Text.of("Set an answer via entity"))
-                .permission("pictionary.command.set.entity")
-                .arguments(GenericArguments.onlyOne(GenericArguments.string(Text.of("entity"))))
+        CommandSpec answerStatus = CommandSpec.builder()
+                .description(Text.of("Answer status"))
+                .permission("pictionary.command.answer.status")
                 .executor((src, args) -> {
-                    Optional<String> arg = args.getOne("entity");
-                    if (arg.isPresent()) {
-                        Set<Entity> entities = Selector.parse(arg.get()).resolve(src);
-
-                        if (entities.size() == 0) {
-                            src.sendMessage(Text.of(prefix, TextColors.RED, "No entity found by the selector specified"));
-                            return CommandResult.empty();
-                        }
-
-                        if (entities.size() > 1) {
-                            src.sendMessage(Text.of(prefix, TextColors.RED, "The selector specified found more than one entity"));
-                            return CommandResult.empty();
-                        }
-
-                        Entity entity = entities.iterator().next();
-                        Optional<Text> displayName = entity.get(Keys.DISPLAY_NAME);
-                        if (displayName.isPresent()) {
-                            answer = displayName.get().toPlain();
-                            src.sendMessage(Text.of(prefix, TextColors.YELLOW, "Answer was set to '", TextColors.WHITE, answer, TextColors.YELLOW, "'"));
-                            return CommandResult.success();
-                        }
-
-                        src.sendMessage(Text.of(prefix, TextColors.RED, "Entity has no display name"));
-                        return CommandResult.empty();
-                    }
-                    src.sendMessage(Text.of(TextColors.RED, "An error has occurred"));
-                    return CommandResult.empty();
-                })
-                .build();
-
-        CommandSpec setArtist = CommandSpec.builder()
-                .description(Text.of("Set the artist"))
-                .permission("pictionary.command.set.artist")
-                .arguments(GenericArguments.onlyOne(GenericArguments.string(Text.of("artist"))))
-                .executor((src, args) -> {
-                    Optional<String> arg = args.getOne("artist");
-                    if (arg.isPresent()) {
-                        Set<Entity> entities = Selector.parse(arg.get()).resolve(src);
-
-                        if (entities.size() == 0) {
-                            src.sendMessage(Text.of(prefix, TextColors.RED, "No entity found by the selector specified"));
-                            return CommandResult.empty();
-                        }
-
-                        if (entities.size() > 1) {
-                            src.sendMessage(Text.of(prefix, TextColors.RED, "The selector specified found more than one entity"));
-                            return CommandResult.empty();
-                        }
-
-                        Entity entity = entities.iterator().next();
-                        if (!(entity instanceof Player)) {
-                            src.sendMessage(Text.of(prefix, TextColors.RED, "The selector found an entity rather than a player"));
-                            return CommandResult.empty();
-                        }
-
-                        Player player = (Player) entity;
-                        setArtist(player);
-                        src.sendMessage(Text.of(prefix, TextColors.YELLOW, "The artist was set to '", TextColors.WHITE, artist.getName(), TextColors.YELLOW, "'"));
+                    if (answer == null) {
+                        src.sendMessage(Text.of(prefix, TextColors.YELLOW, "Ready to set the next answer"));
                         return CommandResult.success();
                     }
-                    src.sendMessage(Text.of(TextColors.RED, "An error has occurred"));
+                    src.sendMessage(Text.of(prefix, TextColors.YELLOW, "Waiting for player to guess the correct answer"));
                     return CommandResult.empty();
                 })
                 .build();
 
-        CommandSpec set = CommandSpec.builder()
-                .description(Text.of("Set an answer or artist"))
-                .child(setString, "string")
-                .child(setEntity, "entity")
-                .child(setArtist, "artist")
-                .build();
-
-        CommandSpec clear = CommandSpec.builder()
-                .description(Text.of("Register an answer"))
-                .permission("pictionary.command.clear")
+        CommandSpec clearAnswer = CommandSpec.builder()
+                .description(Text.of("Clear artist"))
+                .permission("pictionary.command.artist.clear")
                 .executor((src, args) -> {
-                    answer = null;
-                    setArtist(null);
+                    setAnswer(null);
                     src.sendMessage(Text.of(prefix, TextColors.YELLOW, "The current answer was cleared"));
                     return CommandResult.success();
                 })
                 .build();
 
-        CommandSpec status = CommandSpec.builder()
-                .description(Text.of("Status"))
-                .permission("pictionary.command.status")
+        CommandSpec answer = CommandSpec.builder()
+                .description(Text.of("Modify answer"))
+                .child(setAnswerByEntity, "setByEntity")
+                .child(setAnswerByString, "setByString")
+                .child(answerStatus, "status")
+                .child(clearAnswer, "clear")
+                .build();
+
+
+
+        CommandSpec setArtist = CommandSpec.builder()
+                .description(Text.of("Set the artist"))
+                .permission("pictionary.command.artist.set")
+                .arguments(GenericArguments.onlyOne(GenericArguments.player(Text.of("player"))))
                 .executor((src, args) -> {
-                    if (answer == null) {
-                        src.sendMessage(Text.of(prefix, TextColors.YELLOW, "Waiting for answer to be set"));
+                        Player player = args.<Player>getOne("player").get();
+                        setArtist(player);
+                        src.sendMessage(Text.of(prefix, TextColors.YELLOW, "The artist was set to '", TextColors.WHITE, artist.getName(), TextColors.YELLOW, "'"));
+                        return CommandResult.success();
+                })
+                .build();
+
+        CommandSpec artistStatus = CommandSpec.builder()
+                .description(Text.of("Artist status"))
+                .permission("pictionary.command.artist.status")
+                .executor((src, args) -> {
+                    if (artist == null) {
+                        src.sendMessage(Text.of(prefix, TextColors.YELLOW, "Ready to set the next artist"));
                         return CommandResult.success();
                     }
-                    src.sendMessage(Text.of(prefix, TextColors.YELLOW, "Scanning player messages for the correct answer"));
+                    src.sendMessage(Text.of(prefix, TextColors.YELLOW, "Current artist is ", TextColors.GREEN, artist.getName()));
                     return CommandResult.empty();
+                })
+                .build();
+
+        CommandSpec clearArtist = CommandSpec.builder()
+                .description(Text.of("Clear artist"))
+                .permission("pictionary.command.artist.clear")
+                .executor((src, args) -> {
+                    setArtist(null);
+                    src.sendMessage(Text.of(prefix, TextColors.YELLOW, "The current artist was cleared"));
+                    return CommandResult.success();
+                })
+                .build();
+
+        CommandSpec artist = CommandSpec.builder()
+                .description(Text.of("Modify artist"))
+                .child(setArtist, "set")
+                .child(artistStatus, "status")
+                .child(clearArtist, "clear")
+                .build();
+
+
+
+        CommandSpec clear = CommandSpec.builder()
+                .description(Text.of("Clear artist and answer"))
+                .permission("pictionary.command.clear")
+                .executor((src, args) -> {
+                    setAnswer(null);
+                    setArtist(null);
+                    src.sendMessage(Text.of(prefix, TextColors.YELLOW, "The current answer and artist were cleared"));
+                    return CommandResult.success();
                 })
                 .build();
 
         CommandSpec pictionary = CommandSpec.builder()
                 .description(Text.of("Pictionary"))
-                .child(set, "set")
+                .child(answer, "answer")
+                .child(artist, "artist")
                 .child(clear, "clear")
-                .child(status, "status")
                 .build();
 
-        Sponge.getCommandManager().register(this, pictionary, "pictionary");
+        Sponge.getCommandManager().register(this, pictionary, "pictionary", "pc");
 
-        logger.info("Plugin was successfully initialized");
+        logger.info("Finished initialization");
     }
 
     @Listener
     public void onChatEvent(MessageEvent event, @First Player player) {
-        if (answer == null) {
-            return;
-        }
+        getAnswer().ifPresent(answer -> {
 
-        if (artist != null) {
-            if (player.getUniqueId().equals(artist.getUniqueId())) {
-                return;
+            if (getArtist().isPresent()) {
+                if (getArtist().get().getUniqueId().equals(player.getUniqueId())) {
+                    return;
+                }
             }
-        }
 
-        String message = event.getOriginalMessage().toPlain();
+            String message = event.getOriginalMessage().toPlain();
 
-        String[] validAnswers = new String[3];
-        validAnswers[0] = answer;
-        validAnswers[1] = answer.replace("-","");
-        validAnswers[2] = answer.replace("-"," ");
+            String[] validAnswers = new String[3];
+            validAnswers[0] = answer;
+            validAnswers[1] = answer.replace("-","");
+            validAnswers[2] = answer.replace("-"," ");
 
-        for (String ans : validAnswers) {
-            if (Pattern.compile("^<.*>\\s*" + Pattern.quote(ans) + "\\s*$", Pattern.CASE_INSENSITIVE).matcher(message).find()) {
-                prevAnswer = answer;
-                Task.builder().execute(() -> MessageChannel.TO_ALL.send(Text.of(prefix, TextColors.GREEN, player.getName(), TextColors.YELLOW, " has gotten the correct answer! The answer was '", TextColors.WHITE, prevAnswer, TextColors.YELLOW, "'"))).delayTicks(1).submit(this); // Delay by a tick to let the player's message show up in chat before the player is announced as a winner.
-                answer = null;
-                setArtist(null);
-                return;
+            for (String ans : validAnswers) {
+                if (Pattern.compile("^<.*>\\s*" + Pattern.quote(ans) + "\\s*$", Pattern.CASE_INSENSITIVE).matcher(message).find()) {
+                    setAnswer(null);
+                    setArtist(null);
+                    Task.builder().execute(() -> MessageChannel.TO_ALL.send(Text.of(prefix, TextColors.GREEN, player.getName(), TextColors.YELLOW, " has gotten the correct answer! The answer was '", TextColors.WHITE, getPrevAnswer().get(), TextColors.YELLOW, "'"))).delayTicks(1).submit(this); // Delay by a tick to let the player's message show up in chat before the player is announced as a winner.
+                    return;
+                }
             }
-        }
+        });
     }
 
     @Listener
     public void onDisconnectEvent(ClientConnectionEvent.Disconnect event, @First Player player) {
-        if (artist == null) {
-            return;
-        }
+        getArtist().ifPresent(artist -> {
+            if (player.getUniqueId().equals(artist.getUniqueId())) {
+                setArtist(null);
+            }
+        });
+    }
 
-        if (player.getUniqueId().equals(artist.getUniqueId())) {
-            setArtist(null);
-        }
+    public Optional<String> getAnswer() {
+        return Optional.ofNullable(answer);
+    }
+
+    public void setAnswer(String answer) {
+        this.prevAnswer = this.answer;
+        this.answer = answer;
+    }
+
+    public Optional<String> getPrevAnswer() {
+        return Optional.ofNullable(prevAnswer);
+    }
+
+    public Optional<Player> getArtist() {
+        return Optional.ofNullable(artist);
     }
 
     private void setArtist(Player player) {
-        if (artist != null) {
+        getArtist().ifPresent(artist -> {
             artist.offer(Keys.CAN_FLY, false);
             artist.offer(Keys.IS_FLYING, false);
-            artist = null;
-        }
+        });
 
         if (player != null) {
             player.offer(Keys.CAN_FLY, true);
-            artist = player;
         }
+        this.artist = player;
     }
 }

@@ -3,9 +3,9 @@ plugins {
 }
 
 group = 'io.github.icohedron.pictionary'
-version = '2.0.1'
+version = '3.0.0-S5.1'
 
-description = 'Set an answer and the plugin will announce the first player who typed the answer in chat'
+description = 'Provides mechanics that make Pictionary possible'
 
 sourceCompatibility = 1.8
 targetCompatibility = 1.8
