@@ -23,7 +23,7 @@ import org.spongepowered.api.text.format.TextColors;
 import java.util.Optional;
 import java.util.regex.Pattern;
 
-@Plugin(id = "pictionary", name = "Pictionary", version = "3.0.0-S5.1",
+@Plugin(id = "pictionary", name = "Pictionary", version = "3.0.0-S7.0",
         description = "Provides mechanics that make Pictionary possible", authors = {"Icohedron"})
 public class Pictionary {
 
